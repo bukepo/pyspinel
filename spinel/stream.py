@@ -23,11 +23,13 @@ from __future__ import print_function
 
 import sys
 import logging
+import os
 import traceback
 
 import subprocess
 import socket
 import serial
+import struct
 
 import spinel.util
 import spinel.config as CONFIG
@@ -124,6 +126,91 @@ class StreamPipe(IStream):
             self.pipe = None
 
 
+class StreamVirtualTime(IStream):
+    """ An IStream interface implementation to virtual time simulator. """
+
+    BASE_PORT = 9000
+    """ Base UDP port of POSIX simulation. """
+
+    MAX_NODES = 34
+    """ Max number of simulation nodes. """
+
+    PORT_OFFSET = int(os.getenv('PORT_OFFSET', "0"))
+    """ Offset of simulations. """
+
+    OT_SIM_EVENT_UART_RECEIVED = 2
+    """ Event of UART data is ready for NCP. """
+
+    OT_SIM_EVENT_UART_SENT = 3
+    """ Event of UART data is sent by NCP. """
+
+    OT_SIM_EVENT_UART_DONE = 4
+    """ Event of UART data is fully handled by me. """
+
+    def __init__(self, filename):
+        """ Create a stream object from a piped system call """
+        try:
+            self.pipe = subprocess.Popen('exec ' + filename, shell=True,
+                                         stdin=subprocess.PIPE,
+                                         stdout=subprocess.PIPE,
+                                         stderr=sys.stdout.fileno())
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            node_id = int(filename.split(' ')[1])
+            self.port = self.BASE_PORT * 2 +  (self.PORT_OFFSET * self.MAX_NODES) + node_id
+            self.sock.bind(('127.0.0.1', self.port,))
+            self.simulator_addr = ('127.0.0.1', self.BASE_PORT + (self.PORT_OFFSET * self.MAX_NODES))
+            self.buffer = []
+        except:
+            logging.error("Couldn't open " + filename)
+            traceback.print_exc()
+            raise
+
+    def write(self, data):
+        """ Write the given packed data to the stream. """
+        if CONFIG.DEBUG_STREAM_TX:
+            logging.debug("TX Raw: (%d) %s",
+                          len(data), spinel.util.hexify_bytes(data))
+
+        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_RECEIVED, len(data))
+        message += data
+        self.sock.sendto(message, self.simulator_addr)
+
+    def _send_done(self):
+        """ Send event to notify that UART data is handled. """
+        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_DONE, 0)
+        self.sock.sendto(message, self.simulator_addr)
+
+    def read(self, size=1):
+        """ Blocking read on stream object """
+        if self.buffer:
+            return self.buffer.pop(0)
+
+        # send done before blocking receiving
+        self._send_done()
+
+        message, addr = self.sock.recvfrom(1024)
+        delay, type, datalen = struct.unpack('=QBH', message[:11])
+        data = message[11:]
+        assert(type == self.OT_SIM_EVENT_UART_SENT)
+
+        if CONFIG.DEBUG_STREAM_RX:
+            logging.debug("RX Raw: " + data)
+
+        self.buffer = map(ord, data)
+        return self.buffer.pop(0)
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self.pipe:
+            self.pipe.kill()
+            self.pipe = None
+        if self.sock:
+            self.sock.close()
+            self.sock = None
+
+
 def StreamOpen(stream_type, descriptor, verbose=True, baudrate=115200):
     """
     Factory function that creates and opens a stream connection.
@@ -141,8 +228,12 @@ def StreamOpen(stream_type, descriptor, verbose=True, baudrate=115200):
 
     if stream_type == 'p':
         if verbose:
-            print("Opening pipe to " + str(descriptor))
-        return StreamPipe(descriptor)
+            print('Opening pipe to ' + str(descriptor))
+
+        if int(os.getenv('VIRTUAL_TIME', '0')):
+            return StreamVirtualTime(descriptor)
+        else:
+            return StreamPipe(descriptor)
 
     elif stream_type == 's':
         port = int(descriptor)
