@@ -33,8 +33,6 @@ DEBUG_LOG_PROP = DEBUG_ENABLE
 DEBUG_CMD_RESPONSE = 0
 DEBUG_EXPERIMENTAL = 1
 
-LOGGER = logging.getLogger(__name__)
-
 logging.config.dictConfig({
     'version': 1,
     'disable_existing_loggers': False,
@@ -49,19 +47,22 @@ logging.config.dictConfig({
     },
     'handlers': {
         'console': {
-            #'level':'INFO',
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
         },
-        #'syslog': {
-        #    'level':'DEBUG',
-        #    'class':'logging.handlers.SysLogHandler',
-        #    'address': '/dev/log'
-        #},
+        'syslog': {
+            'level':'DEBUG',
+            'class':'logging.handlers.SysLogHandler',
+        },
     },
     'loggers': {
+        '': {
+            'handlers': ['syslog'],
+            'level': 'DEBUG',
+            'propagate': True
+        },
         'spinel': {
-            'handlers': ['console'],  # ,'syslog'],
+            'handlers': ['syslog'],
             'level': 'DEBUG',
             'propagate': True
         }

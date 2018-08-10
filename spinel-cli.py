@@ -149,12 +149,13 @@ class SpinelCliCmd(Cmd, SpinelCodec):
 
     icmp_factory = IcmpV6Factory()
 
-    def __init__(self, stream_desc, nodeid, *_a, **kw):
+    def __init__(self, stream, nodeid, *_a, **kw):
 
         self.nodeid = kw.get('nodeid', '1')
         self.tun_if = None
 
-        self.wpan_api = WpanApi(stream_desc, nodeid)
+        self._stream = stream
+        self.wpan_api = WpanApi(stream, nodeid)
         self.wpan_api.queue_register(SPINEL.HEADER_DEFAULT)
         self.wpan_api.callback_register(SPINEL.PROP_STREAM_NET,
                                         self.wpan_callback)
@@ -187,8 +188,10 @@ class SpinelCliCmd(Cmd, SpinelCodec):
             else:
                 readline.parse_and_bind('tab: complete')
 
+        self.stream.precmd()
         self.prop_set_value(SPINEL.PROP_IPv6_ICMP_PING_OFFLOAD, 1)
         self.prop_set_value(SPINEL.PROP_THREAD_RLOC16_DEBUG_PASSTHRU, 1)
+        self.stream.postcmd()
 
     command_names = [
         # Shell commands
@@ -1362,7 +1365,7 @@ class SpinelCliCmd(Cmd, SpinelCodec):
             ping_req = self.icmp_factory.build_icmp_echo_request(ml64, addr, data, identifier=(timenow >> 16), sequence_number=(timenow & 0xffff))
 
             self.wpan_api.ip_send(ping_req)
-            # Let handler print result
+            print('Done')
         except:
             print("Fail")
             print(traceback.format_exc())
@@ -2224,6 +2227,13 @@ class SpinelCliCmd(Cmd, SpinelCodec):
         """
         pass
 
+    def precmd(self, line):
+        self._stream.precmd()
+        return line
+
+    def postcmd(self, stop, line):
+        self._stream.postcmd()
+        return stop
 
 def parse_args():
     """" Send spinel commands to initialize sniffer node. """
