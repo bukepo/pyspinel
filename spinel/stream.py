@@ -135,6 +135,9 @@ class StreamVirtualTime(IStream):
     MAX_NODES = 34
     """ Max number of simulation nodes. """
 
+    MAX_MESSAGE = 1536
+    """ Max bytes of message. """
+
     PORT_OFFSET = int(os.getenv('PORT_OFFSET', "0"))
     """ Offset of simulations. """
 
@@ -188,7 +191,7 @@ class StreamVirtualTime(IStream):
         # send done before blocking receiving
         self._send_done()
 
-        message, addr = self.sock.recvfrom(1024)
+        message, addr = self.sock.recvfrom(self.MAX_MESSAGE)
         delay, type, datalen = struct.unpack('=QBH', message[:11])
         data = message[11:]
         assert(type == self.OT_SIM_EVENT_UART_SENT)
