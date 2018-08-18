@@ -500,6 +500,11 @@ class SpinelCliCmd(Cmd, SpinelCodec):
             logging.info(line + ": command not found")
             # exec(line)
 
+    def postcmd(self, stop, line):
+        print(line)
+        sys.stdout.flush()
+        return stop
+
     def do_debug(self, line):
         """
         Enables detail logging of bytes over the wire to the radio modem.

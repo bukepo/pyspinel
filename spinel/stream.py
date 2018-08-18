@@ -30,6 +30,7 @@ import subprocess
 import socket
 import serial
 import struct
+import threading
 
 import spinel.util
 import spinel.config as CONFIG
@@ -150,6 +151,9 @@ class StreamVirtualTime(IStream):
     OT_SIM_EVENT_UART_DONE = 4
     """ Event of UART data is fully handled by me. """
 
+    OT_SIM_EVENT_ACK = 6
+    """ Event of UART data is received by simulator. """
+
     def __init__(self, filename):
         """ Create a stream object from a piped system call """
         try:
@@ -157,6 +161,7 @@ class StreamVirtualTime(IStream):
                                          stdin=subprocess.PIPE,
                                          stdout=subprocess.PIPE,
                                          stderr=sys.stdout.fileno())
+            self._ack = threading.Event()
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             node_id = int(filename.split(' ')[1])
             self.port = self.BASE_PORT * 2 +  (self.PORT_OFFSET * self.MAX_NODES) + node_id
@@ -174,9 +179,28 @@ class StreamVirtualTime(IStream):
             logging.debug("TX Raw: (%d) %s",
                           len(data), spinel.util.hexify_bytes(data))
 
+        self._ack.clear()
         message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_RECEIVED, len(data))
         message += data
         self.sock.sendto(message, self.simulator_addr)
+
+        while not self._ack.wait(1):
+            pass
+
+    def _next_event(self):
+        message, addr = self.sock.recvfrom(self.MAX_MESSAGE)
+        delay, type, datalen = struct.unpack('=QBH', message[:11])
+        data = message[11:]
+
+        if type is self.OT_SIM_EVENT_ACK:
+            self._ack.set()
+        elif type == self.OT_SIM_EVENT_UART_SENT:
+            if CONFIG.DEBUG_STREAM_RX:
+                logging.debug("RX Raw: " + data)
+
+            self.buffer = map(ord, data)
+        else:
+            assert False
 
     def _send_done(self):
         """ Send event to notify that UART data is handled. """
@@ -191,15 +215,9 @@ class StreamVirtualTime(IStream):
         # send done before blocking receiving
         self._send_done()
 
-        message, addr = self.sock.recvfrom(self.MAX_MESSAGE)
-        delay, type, datalen = struct.unpack('=QBH', message[:11])
-        data = message[11:]
-        assert(type == self.OT_SIM_EVENT_UART_SENT)
+        while not self.buffer:
+            self._next_event()
 
-        if CONFIG.DEBUG_STREAM_RX:
-            logging.debug("RX Raw: " + data)
-
-        self.buffer = map(ord, data)
         return self.buffer.pop(0)
 
     def __del__(self):
