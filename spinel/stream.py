@@ -212,6 +212,9 @@ class StreamVirtualTime(IStream):
         if self.buffer:
             return self.buffer.pop(0)
 
+        if self.pipe:
+            assert self.pipe.poll() is None
+
         # send done before blocking receiving
         self._send_done()
 
@@ -225,7 +228,7 @@ class StreamVirtualTime(IStream):
 
     def close(self):
         if self.pipe:
-            self.pipe.kill()
+            self.pipe.terminate()
             self.pipe = None
         if self.sock:
             self.sock.close()
