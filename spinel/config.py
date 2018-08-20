@@ -47,14 +47,12 @@ logging.config.dictConfig({
     },
     'handlers': {
         'console': {
-            #'level':'INFO',
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
         },
         'syslog': {
             'level':'DEBUG',
             'class':'logging.handlers.SysLogHandler',
-            'address': '/dev/log'
         },
     },
     'loggers': {
