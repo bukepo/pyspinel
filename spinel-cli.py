@@ -500,11 +500,6 @@ class SpinelCliCmd(Cmd, SpinelCodec):
             logging.info(line + ": command not found")
             # exec(line)
 
-    def postcmd(self, stop, line):
-        print(line)
-        sys.stdout.flush()
-        return stop
-
     def do_debug(self, line):
         """
         Enables detail logging of bytes over the wire to the radio modem.
@@ -1367,7 +1362,7 @@ class SpinelCliCmd(Cmd, SpinelCodec):
             ping_req = self.icmp_factory.build_icmp_echo_request(ml64, addr, data, identifier=(timenow >> 16), sequence_number=(timenow & 0xffff))
 
             self.wpan_api.ip_send(ping_req)
-            # Let handler print result
+            print('Done')
         except:
             print("Fail")
             print(traceback.format_exc())
