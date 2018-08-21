@@ -31,6 +31,7 @@ import socket
 import serial
 import struct
 import threading
+import time
 
 import spinel.util
 import spinel.config as CONFIG
@@ -182,10 +183,23 @@ class StreamVirtualTime(IStream):
         self._ack.clear()
         message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_RECEIVED, len(data))
         message += data
-        self.sock.sendto(message, self.simulator_addr)
+
+        self._send_message(message)
 
         while not self._ack.wait(1):
             pass
+
+    def _send_message(self, message):
+        while True:
+            try:
+                sent = self.sock.sendto(message, self.simulator_addr)
+            except socket.error:
+                traceback.print_exc()
+                time.sleep(0)
+            else:
+                break
+
+        assert sent == len(message)
 
     def _next_event(self):
         message, addr = self.sock.recvfrom(self.MAX_MESSAGE)
@@ -205,7 +219,7 @@ class StreamVirtualTime(IStream):
     def _send_done(self):
         """ Send event to notify that UART data is handled. """
         message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_DONE, 0)
-        self.sock.sendto(message, self.simulator_addr)
+        self._send_message(message)
 
     def read(self, size=1):
         """ Blocking read on stream object """
