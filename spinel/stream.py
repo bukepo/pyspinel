@@ -152,7 +152,7 @@ class StreamVirtualTime(IStream):
     OT_SIM_EVENT_UART_DONE = 4
     """ Event of UART data is fully handled by me. """
 
-    OT_SIM_EVENT_ACK = 6
+    OT_SIM_EVENT_ACK = 5
     """ Event of UART data is received by simulator. """
 
     def __init__(self, filename):
@@ -163,6 +163,7 @@ class StreamVirtualTime(IStream):
                                          stdout=subprocess.PIPE,
                                          stderr=sys.stdout.fileno())
             self._ack = threading.Event()
+            self._done = 0
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             node_id = int(filename.split(' ')[1])
             self.port = self.BASE_PORT * 2 +  (self.PORT_OFFSET * self.MAX_NODES) + node_id
@@ -229,8 +230,11 @@ class StreamVirtualTime(IStream):
         if self.pipe:
             assert self.pipe.poll() is None
 
+        if not self._done:
+            self._send_done()
+
+        self._done += 1
         # send done before blocking receiving
-        self._send_done()
 
         while not self.buffer:
             self._next_event()
