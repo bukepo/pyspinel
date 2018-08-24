@@ -40,6 +40,12 @@ import spinel.config as CONFIG
 class IStream(object):
     """ Abstract base class for a generic Stream Interface. """
 
+    def precmd(self):
+        pass
+
+    def postcmd(self):
+        pass
+
     def read(self, size):
         """ Read an array of byte integers of the given size from the stream. """
         pass
@@ -220,11 +226,11 @@ class StreamVirtualTime(IStream):
         else:
             assert False
 
-    def send_precmd(self):
+    def precmd(self):
         message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_PRECMD, 0)
         self._send_message(message)
 
-    def send_postcmd(self):
+    def postcmd(self):
         """ Send event to notify that UART data is handled. """
         message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_POSTCMD, 0)
         self._send_message(message)

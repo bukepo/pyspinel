@@ -188,10 +188,10 @@ class SpinelCliCmd(Cmd, SpinelCodec):
             else:
                 readline.parse_and_bind('tab: complete')
 
-        self.stream.send_precmd()
+        self.stream.precmd()
         self.prop_set_value(SPINEL.PROP_IPv6_ICMP_PING_OFFLOAD, 1)
         self.prop_set_value(SPINEL.PROP_THREAD_RLOC16_DEBUG_PASSTHRU, 1)
-        self.stream.send_postcmd()
+        self.stream.postcmd()
 
     command_names = [
         # Shell commands
@@ -2228,11 +2228,11 @@ class SpinelCliCmd(Cmd, SpinelCodec):
         pass
 
     def precmd(self, line):
-        self.stream.send_precmd()
+        self.stream.precmd()
         return line
 
     def postcmd(self, stop, line):
-        self.stream.send_postcmd()
+        self.stream.postcmd()
         return stop
 
 def parse_args():
