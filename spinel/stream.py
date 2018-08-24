@@ -143,17 +143,20 @@ class StreamVirtualTime(IStream):
     PORT_OFFSET = int(os.getenv('PORT_OFFSET', "0"))
     """ Offset of simulations. """
 
-    OT_SIM_EVENT_UART_RECEIVED = 2
-    """ Event of UART data is ready for NCP. """
+    OT_SIM_EVENT_UART_INPUT = 2
+    """ Event of UART data input for NCP. """
 
-    OT_SIM_EVENT_UART_SENT = 3
-    """ Event of UART data is sent by NCP. """
+    OT_SIM_EVENT_UART_OUTPUT = 3
+    """ Event of UART data output from NCP. """
 
-    OT_SIM_EVENT_UART_DONE = 4
+    OT_SIM_EVENT_UART_ACK = 4
+    """ Event of UART data is received by simulator. """
+
+    OT_SIM_EVENT_PRECMD = 5
     """ Event of UART data is fully handled by me. """
 
-    OT_SIM_EVENT_ACK = 5
-    """ Event of UART data is received by simulator. """
+    OT_SIM_EVENT_POSTCMD = 6
+    """ Event of UART data is fully handled by me. """
 
     def __init__(self, filename):
         """ Create a stream object from a piped system call """
@@ -182,7 +185,7 @@ class StreamVirtualTime(IStream):
                           len(data), spinel.util.hexify_bytes(data))
 
         self._ack.clear()
-        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_RECEIVED, len(data))
+        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_INPUT, len(data))
         message += data
 
         self._send_message(message)
@@ -207,9 +210,9 @@ class StreamVirtualTime(IStream):
         delay, type, datalen = struct.unpack('=QBH', message[:11])
         data = message[11:]
 
-        if type is self.OT_SIM_EVENT_ACK:
+        if type is self.OT_SIM_EVENT_UART_ACK:
             self._ack.set()
-        elif type == self.OT_SIM_EVENT_UART_SENT:
+        elif type == self.OT_SIM_EVENT_UART_OUTPUT:
             if CONFIG.DEBUG_STREAM_RX:
                 logging.debug("RX Raw: " + data)
 
@@ -217,9 +220,18 @@ class StreamVirtualTime(IStream):
         else:
             assert False
 
-    def _send_done(self):
+    def send_precmd(self):
+        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_PRECMD, 0)
+        self._send_message(message)
+
+    def send_postcmd(self):
         """ Send event to notify that UART data is handled. """
-        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_DONE, 0)
+        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_POSTCMD, 0)
+        self._send_message(message)
+
+    def _send_ack(self):
+        """ Send event to notify that UART data is handled. """
+        message = struct.pack('=QBH', 0, self.OT_SIM_EVENT_UART_ACK, 0)
         self._send_message(message)
 
     def read(self, size=1):
@@ -230,8 +242,8 @@ class StreamVirtualTime(IStream):
         if self.pipe:
             assert self.pipe.poll() is None
 
-        if not self._done:
-            self._send_done()
+        if self._done:
+            self._send_ack()
 
         self._done += 1
         # send done before blocking receiving
