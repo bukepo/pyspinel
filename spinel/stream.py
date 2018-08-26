@@ -184,6 +184,11 @@ class StreamVirtualTime(IStream):
             traceback.print_exc()
             raise
 
+    def __del__(self):
+        if self.pipe:
+            self.pipe.kill()
+            self.pipe = None
+
     def write(self, data):
         """ Write the given packed data to the stream. """
         if CONFIG.DEBUG_STREAM_TX:
