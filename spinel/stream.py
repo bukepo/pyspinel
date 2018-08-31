@@ -97,10 +97,10 @@ class StreamPipe(IStream):
     def __init__(self, filename):
         """ Create a stream object from a piped system call """
         try:
-            self.pipe = subprocess.Popen(filename, shell=True,
+            self.pipe = subprocess.Popen('exec ' + filename, shell=True,
                                          stdin=subprocess.PIPE,
                                          stdout=subprocess.PIPE,
-                                         stderr=sys.stdout.fileno())
+                                         stderr=sys.stderr)
         except:
             logging.error("Couldn't open " + filename)
             traceback.print_exc()
