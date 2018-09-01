@@ -166,7 +166,7 @@ class SpinelCliCmd(Cmd, SpinelCodec):
             self.prompt = MASTER_PROMPT + " > "
         else:
             self.use_rawinput = 0
-            self.prompt = ""
+            self.prompt = MASTER_PROMPT + " > "
 
         SpinelCliCmd.command_names.sort()
 
