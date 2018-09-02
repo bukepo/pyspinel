@@ -105,6 +105,12 @@ class StreamPipe(IStream):
             logging.error("Couldn't open " + filename)
             traceback.print_exc()
 
+    def __del__(self):
+        if self.pipe:
+            self.pipe.terminate()
+            self.pipe.wait()
+            self.pipe = None
+
     def write(self, data):
         if CONFIG.DEBUG_STREAM_TX:
             logging.debug("TX Raw: (%d) %s",
