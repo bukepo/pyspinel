@@ -48,6 +48,7 @@ import random
 import optparse
 
 import binascii
+import socket
 import struct
 import string
 import textwrap
@@ -148,7 +149,7 @@ class SpinelCliCmd(Cmd, SpinelCodec):
     """
 
     BASE_PORT = 9000
-    PORT_OFFSET = int(getenv("PORT_OFFSET", "0"))
+    PORT_OFFSET = int(os.getenv("PORT_OFFSET", "0"))
     MAX_NODES = 34
 
     OT_SIM_EVENT_PRECMD = 4
@@ -2239,7 +2240,7 @@ class SpinelCliCmd(Cmd, SpinelCodec):
         message = struct.pack('=QBH', 0, type, 0)
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.bind(self._addr)
-        self._sock.send(message, self._simulator_addr)
+        self._sock.sendto(message, self._simulator_addr)
         self._sock.close()
 
     def precmd(self, line):
