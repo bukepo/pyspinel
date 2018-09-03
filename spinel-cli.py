@@ -147,10 +147,19 @@ class SpinelCliCmd(Cmd, SpinelCodec):
     via the Spinel protocol.
     """
 
+    BASE_PORT = 9000
+    PORT_OFFSET = int(getenv("PORT_OFFSET", "0"))
+    MAX_NODES = 34
+
+    OT_SIM_EVENT_PRECMD = 4
+    OT_SIM_EVENT_POSTCMD = 5
+
     icmp_factory = IcmpV6Factory()
 
     def __init__(self, stream, nodeid, *_a, **kw):
 
+        self._addr = ('127.0.0.1', self.BASE_PORT * 2 + self.MAX_NODES * self.PORT_OFFSET)
+        self._simulator_addr = ('127.0.0.1', self.BASE_PORT + self.MAX_NODES * self.PORT_OFFSET)
         self.nodeid = kw.get('nodeid', '1')
         self.tun_if = None
 
@@ -2226,6 +2235,20 @@ class SpinelCliCmd(Cmd, SpinelCodec):
         """
         pass
 
+    def _notify_simulator(self, type):
+        message = struct.pack('=QBH', 0, type, 0)
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock.bind(self._addr)
+        self._sock.send(message, self._simulator_addr)
+        self._sock.close()
+
+    def precmd(self, line):
+        self._notify_simulator(self.OT_SIM_EVENT_PRECMD)
+        return line
+
+    def postcmd(self, stop, line):
+        self._notify_simulator(self.OT_SIM_EVENT_POSTCMD)
+        return stop
 
 def parse_args():
     """" Send spinel commands to initialize sniffer node. """
