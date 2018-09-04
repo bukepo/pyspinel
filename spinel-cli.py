@@ -161,7 +161,7 @@ class SpinelCliCmd(Cmd, SpinelCodec):
 
         self._addr = ('127.0.0.1', self.BASE_PORT * 2 + self.MAX_NODES * self.PORT_OFFSET)
         self._simulator_addr = ('127.0.0.1', self.BASE_PORT + self.MAX_NODES * self.PORT_OFFSET)
-        self.nodeid = kw.get('nodeid', '1')
+        self.nodeid = nodeid
         self.tun_if = None
 
         self.wpan_api = WpanApi(stream, nodeid)
@@ -2237,18 +2237,21 @@ class SpinelCliCmd(Cmd, SpinelCodec):
         pass
 
     def _notify_simulator(self, type):
-        message = struct.pack('=QBH', 0, type, 0)
+        message = struct.pack('=QBHB', 0, type, 1, int(self.nodeid))
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.bind(self._addr)
         self._sock.sendto(message, self._simulator_addr)
         self._sock.close()
 
     def precmd(self, line):
-        self._notify_simulator(self.OT_SIM_EVENT_PRECMD)
+        print(line, file=sys.stderr)
+        if line != 'exit':
+            self._notify_simulator(self.OT_SIM_EVENT_PRECMD)
         return line
 
     def postcmd(self, stop, line):
-        self._notify_simulator(self.OT_SIM_EVENT_POSTCMD)
+        if line != 'exit':
+            self._notify_simulator(self.OT_SIM_EVENT_POSTCMD)
         return stop
 
 def parse_args():

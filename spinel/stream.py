@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import sys
 import logging
+import time
 import traceback
 
 import subprocess
@@ -116,6 +117,7 @@ class StreamPipe(IStream):
             logging.debug("TX Raw: (%d) %s",
                           len(data), spinel.util.hexify_bytes(data))
         self.pipe.stdin.write(data)
+        time.sleep(0)
 
     def read(self, size=1):
         """ Blocking read on stream object """
