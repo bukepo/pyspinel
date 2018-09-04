@@ -2237,7 +2237,7 @@ class SpinelCliCmd(Cmd, SpinelCodec):
         pass
 
     def postcmd(self, stop, line):
-        message = struct.pack('=QBHB', 0, type, 1, int(self.nodeid))
+        message = struct.pack('=QBHB', 0, self.OT_SIM_EVENT_POSTCMD, 1, int(self.nodeid))
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.bind(self._addr)
         self._sock.sendto(message, self._simulator_addr)
