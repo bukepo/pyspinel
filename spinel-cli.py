@@ -2236,22 +2236,12 @@ class SpinelCliCmd(Cmd, SpinelCodec):
         """
         pass
 
-    def _notify_simulator(self, type):
+    def postcmd(self, stop, line):
         message = struct.pack('=QBHB', 0, type, 1, int(self.nodeid))
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.bind(self._addr)
         self._sock.sendto(message, self._simulator_addr)
         self._sock.close()
-
-    def precmd(self, line):
-        print(line, file=sys.stderr)
-        if line != 'exit':
-            self._notify_simulator(self.OT_SIM_EVENT_PRECMD)
-        return line
-
-    def postcmd(self, stop, line):
-        if line != 'exit':
-            self._notify_simulator(self.OT_SIM_EVENT_POSTCMD)
         return stop
 
 def parse_args():
